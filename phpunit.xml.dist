@@ -1,0 +1,15 @@
+<phpunit
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/|version|/phpunit.xsd"
+         colors="true">
+  <testsuites>
+     <testsuite name="My Test Suite">
+       <directory suffix="Test.php">tests</directory>
+     </testsuite>
+   </testsuites>
+
+   <php>
+     <env name="DB_FIXTURES_BDS_mysql" value="tests/bds.yml"/>
+     <env name="DB_FIXTURES_BDS_sqlite" value="tests/bds.yml"/>
+   </php>
+</phpunit>

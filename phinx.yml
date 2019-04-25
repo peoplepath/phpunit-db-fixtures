@@ -1,0 +1,21 @@
+paths:
+    migrations: '%%PHINX_CONFIG_DIR%%/db/migrations'
+    seeds: '%%PHINX_CONFIG_DIR%%/db/seeds'
+
+environments:
+    default_migration_table: phinxlog
+
+    sqlite:
+        adapter: sqlite
+        name: db
+        charset: utf8
+
+    mysql:
+        adapter: mysql
+        host: 127.0.0.1
+        name: db
+        user: root
+        pass: ''
+        charset: utf8
+
+version_order: creation

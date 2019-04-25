@@ -1,0 +1,24 @@
+{
+    "name": "intraworlds/phpunit-db-fixtures",
+    "description": "Loading DB fixtures with ease",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ondřej Ešler",
+            "email": "ondrej.esler@intraworlds.com"
+        }
+    ],
+    "require": {
+        "phpunit/phpunit": "^7.0||^8.0",
+        "symfony/yaml": "^4.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "IW\\PHPUnit\\DbFixtures\\": "src"
+        }
+    },
+    "require-dev": {
+        "robmorgan/phinx": "^0.10.6"
+    }
+}
