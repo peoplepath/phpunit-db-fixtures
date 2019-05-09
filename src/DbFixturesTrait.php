@@ -45,10 +45,11 @@ trait DbFixturesTrait
                         }
                     }
 
-                    $sql = '';
+                    $sql = 'SET foreign_key_checks = 0;';
                     foreach ($data as $table => $rows) {
                         $sql .= $this->buildSql($connection, $table, $rows) . PHP_EOL;
                     }
+                    $sql .= 'SET foreign_key_checks = 1;';
 
                     $connection->exec($sql);
                 } else {
