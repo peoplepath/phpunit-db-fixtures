@@ -11,7 +11,7 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
 
     protected function getConnections(): array {
         return [
-            'mysql' => $this->mysql ?? $this->mysql = new \PDO('mysql:host=127.0.0.1;dbname=db', 'root', ''),
+            'mysql' => $this->mysql ?? $this->mysql = new \PDO('mysql:host=127.0.0.1:33060;dbname=db', 'root', ''),
             'sqlite' => $this->sqlite ?? $this->sqlite = new \PDO('sqlite:db.sqlite3'),
         ];
     }
@@ -74,6 +74,18 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         ];
 
         $this->assertSame($expected, $demo);
+    }
+
+    function testErrorInFixturesWithSqlite() {
+        $this->expectException(\PDOException::class);
+        $this->expectExceptionMessageRegExp('/^table demo has no column named usernames/');
+        $this->loadFixtures('sqlite', 'fixtures_with_error.yml');
+    }
+
+    function testErrorInFixturesWithMysql() {
+        $this->expectException(\PDOException::class);
+        $this->expectExceptionMessageRegExp('/^Unknown column \'usernames\' in \'field list\'/');
+        $this->loadFixtures('mysql', 'fixtures_with_error.yml');
     }
 
 }

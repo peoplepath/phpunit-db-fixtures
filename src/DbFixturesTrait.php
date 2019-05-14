@@ -24,39 +24,79 @@ trait DbFixturesTrait
      *
      * @before
      */
-    public function loadFixtures(): void {
+    public function loadFixturesByAnnotations(): void {
         if ($fixtures = $this->getAnnotations()['method']['fixtures'] ?? []) {
             $connections = $this->getConnections();
 
             foreach ($fixtures as $fixture) {
                 [$connectionName, $args] = \explode(' ', $fixture, 2) + [null, null];
 
-                if ($connection = $connections[$connectionName] ?? null) {
-                    if ($bdsFilename = getenv('DB_FIXTURES_BDS_' . $connectionName)) {
-                        $data = $this->loadFile($bdsFilename);
-                    } else {
-                        $data = [];
-                    }
-
-                    if ($args) {
-                        $filenames = \explode(' ', $args);
-                        foreach ($filenames as $filename) {
-                            $data = array_merge_recursive($data, $this->loadFile($filename));
-                        }
-                    }
-
-                    $sql = 'SET foreign_key_checks = 0;';
-                    foreach ($data as $table => $rows) {
-                        $sql .= $this->buildSql($connection, $table, $rows) . PHP_EOL;
-                    }
-                    $sql .= 'SET foreign_key_checks = 1;';
-
-                    $connection->exec($sql);
-                } else {
-                    throw new \InvalidArgumentException('Connection "' . $connectionName . '" not found');
+                $filenames = [];
+                if ($bdsFilename = getenv('DB_FIXTURES_BDS_' . $connectionName)) {
+                    $filenames[] = $bdsFilename;
                 }
+
+                if ($args) {
+                    foreach (\explode(' ', $args) as $filename) {
+                        $filenames[] = $filename;
+                    }
+                }
+
+                $this->loadFixtures($connectionName, ...$filenames);
             }
         }
+    }
+
+    protected function loadFixtures(string $connectionName, string ...$filenames): void {
+        if ($connection = $this->getConnections()[$connectionName] ?? null) {
+            $data = [];
+
+            foreach ($filenames as $filename) {
+                $data = array_merge_recursive($data, $this->loadFile($filename));
+            }
+
+            $sqls = [$this->disableForeignKeys($connection)];
+
+            foreach ($data as $table => $rows) {
+                $this->buildSql($connection, $table, $rows, $sqls);
+            }
+
+            $sqls[] = $this->enableForeignKeys($connection);
+
+            $this->executeSqls($connection, $sqls);
+
+            // do {
+            //     if ($stmt->errorCode() !== '00000') {
+            //         $this->throwPDOException($stmt);
+            //     }
+            // } while ($stmt->nextRowset());
+
+
+            // $connection->exec($sql);
+        } else {
+            throw new \InvalidArgumentException('Connection "' . $connectionName . '" not found');
+        }
+    }
+
+    private function executeSqls(\PDO $pdo, array $sqls): void {
+        if (!$pdo->beginTransaction()) {
+            $this->throwPDOException($pdo, 'BEGIN TRANSACTION');
+        }
+
+        foreach ($sqls as $sql) {
+            if ($pdo->exec($sql) === false) {
+                $this->throwPDOException($pdo, $sql);
+            }
+        }
+
+        if (!$pdo->commit()) {
+            $this->throwPDOException($pdo, 'COMMIT');
+        }
+    }
+
+    private function throwPDOException($pdo, $sql): void {
+        [, $code, $message] = $pdo->errorInfo();
+        throw new \PDOException($message . PHP_EOL . $sql, $code);
     }
 
     private function resolveFilePath(string $filename): string {
@@ -87,7 +127,40 @@ trait DbFixturesTrait
         }
     }
 
-    private function buildSql(\PDO $pdo, string $table, array $rows): string {
+    private function disableForeignKeys(\PDO $pdo): string {
+        switch ($driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
+            case 'mysql':
+                return 'SET foreign_key_checks = 0;';
+            case 'sqlite':
+                return 'PRAGMA foreign_keys = OFF;';
+        }
+
+        throw new \InvalidArgumentException('Unsupported PDO driver: ' . $driver);
+    }
+
+    private function enableForeignKeys(\PDO $pdo): string {
+        switch ($driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
+            case 'mysql':
+                return 'SET foreign_key_checks = 1;';
+            case 'sqlite':
+                return 'PRAGMA foreign_keys = ON;';
+        }
+
+        throw new \InvalidArgumentException('Unsupported PDO driver: ' . $driver);
+    }
+
+    private function buildSql(\PDO $pdo, string $table, array $rows, array &$sqls): void {
+        switch ($driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
+            case 'mysql':
+                $sqls[] = \sprintf('TRUNCATE TABLE `%s`;', $table);
+                break;
+            case 'sqlite':
+                $sqls[] = \sprintf('DELETE FROM `%s`;UPDATE SQLITE_SEQUENCE SET seq = 0 WHERE name = "%s";', $table, $table);
+                break;
+            default:
+                throw new \InvalidArgumentException('Unsupported PDO driver: ' . $driver);
+        }
+
         $columns = [];
         foreach ($rows as $row) {
             $columns = array_merge($columns, array_keys($row));
@@ -109,20 +182,7 @@ trait DbFixturesTrait
             $values[] = '(' . implode(',', $vals) . ')';
         }
 
-        $insert = \sprintf('INSERT INTO `%s` (%s) VALUES %s;', $table, implode(',', $columns), implode(',', $values));
-
-        switch ($driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
-            case 'mysql':
-                $truncate = \sprintf('TRUNCATE TABLE `%s`;', $table);
-                break;
-            case 'sqlite':
-                $truncate = \sprintf('DELETE FROM `%s`;UPDATE SQLITE_SEQUENCE SET seq = 0 WHERE name = "%s";', $table, $table);
-                break;
-            default:
-                throw new \InvalidArgumentException('Unsupported PDO driver: ' . $driver);
-        }
-
-        return $truncate . $insert;
+        $sqls[] = \sprintf('INSERT INTO `%s` (%s) VALUES %s;', $table, implode(',', $columns), implode(',', $values));
     }
 
 }
