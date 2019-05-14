@@ -34,14 +34,16 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
 
         $expected = [
             [
-                'id'       => '1',
-                'username' => 'user1',
-                'created'  => '2011-11-11 11:11:11',
+                'id'           => '1',
+                'username'     => 'user1',
+                'created'      => '2011-11-11 11:11:11',
+                'random_bytes' => null,
             ],
             [
-                'id'       => '2',
-                'username' => 'user2',
-                'created'  => '2012-12-12 12:12:12',
+                'id'           => '2',
+                'username'     => 'user2',
+                'created'      => '2012-12-12 12:12:12',
+                'random_bytes' => null,
             ],
         ];
 
@@ -86,6 +88,25 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         $this->expectException(\PDOException::class);
         $this->expectExceptionMessageRegExp('/^Unknown column \'usernames\' in \'field list\'/');
         $this->loadFixtures('mysql', 'fixtures_with_error.yml');
+    }
+
+    /**
+     * @dataProvider provideConnections
+     */
+    function testBinaryFixturesSqlite(\PDO $pdo) {
+        $connectionName = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
+
+        $this->loadFixtures($connectionName, 'fixtures_with_binary_data.yml');
+
+        $stmt = $pdo->query('SELECT HEX(random_bytes) as hex FROM demo');
+        $demo = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $expected = [
+            [
+                'hex' => '13A8E7A00E84D88CCA63DA4855108F73657B5C069FB4077530162A98D7A4B236',
+            ]
+        ];
+        $this->assertSame($expected, $demo);
     }
 
 }

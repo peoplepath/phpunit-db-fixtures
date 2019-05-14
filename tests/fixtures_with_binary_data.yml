@@ -1,0 +1,4 @@
+demo:
+  -
+    username: user1
+    random_bytes: !!binary 'E6jnoA6E2IzKY9pIVRCPc2V7XAaftAd1MBYqmNeksjY='

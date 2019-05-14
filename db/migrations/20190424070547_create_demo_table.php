@@ -35,6 +35,7 @@ class CreateDemoTable extends AbstractMigration
         $this->table('demo')
             ->addColumn('username', 'string', ['limit' => 20])
             ->addColumn('created', 'timestamp', ['default' => 'CURRENT_TIMESTAMP'])
+            ->addColumn('random_bytes', 'binary', ['limit' => 32, 'null' => true])
             ->save();
     }
 }

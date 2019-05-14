@@ -83,10 +83,15 @@ trait DbFixturesTrait
             $this->throwPDOException($pdo, 'BEGIN TRANSACTION');
         }
 
-        foreach ($sqls as $sql) {
-            if ($pdo->exec($sql) === false) {
-                $this->throwPDOException($pdo, $sql);
+        try {
+            foreach ($sqls as $sql) {
+                if ($pdo->exec($sql) === false) {
+                    $this->throwPDOException($pdo, $sql);
+                }
             }
+        } catch (\Throwable $exception) {
+            $pdo->rollback();
+            throw $exception;
         }
 
         if (!$pdo->commit()) {
@@ -173,7 +178,12 @@ trait DbFixturesTrait
             $vals = [];
             foreach ($columns as $column) {
                 if ($val = $row[$column] ?? null) {
-                    $vals[] = $pdo->quote($val);
+                    // pack binary string
+                    if (is_string($val) && preg_match('/[^\x20-\x7E\t\r\n]/', $val)) {
+                        $vals[] = $this->quoteBinary($pdo, $val);
+                    } else {
+                        $vals[] = $pdo->quote($val);
+                    }
                 } else {
                     $vals[] = 'NULL';
                 }
@@ -183,6 +193,17 @@ trait DbFixturesTrait
         }
 
         $sqls[] = \sprintf('INSERT INTO `%s` (%s) VALUES %s;', $table, implode(',', $columns), implode(',', $values));
+    }
+
+    private function quoteBinary(\PDO $pdo, string $value): string {
+        switch ($driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
+            case 'mysql':
+                return sprintf("UNHEX('%s')", bin2hex($value));
+            case 'sqlite':
+                return sprintf("X'%s'", bin2hex($value));
+        }
+
+        throw new \InvalidArgumentException('Unsupported PDO driver: ' . $driver);
     }
 
 }
