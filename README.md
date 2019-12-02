@@ -19,7 +19,7 @@ final class MyTest extends TestCase
   }
   
   /**
-   * @fixtures mysql fixtures.yml
+   * @fixtures mysql read-only fixtures.yml
    */
   public function testWithFixtures() {
     // before test data from fixtures.yml will be loaded into mysql

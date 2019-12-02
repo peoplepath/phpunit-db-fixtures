@@ -11,8 +11,22 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
 
     protected function getConnections(): array {
         return [
-            'mysql' => $this->mysql ?? $this->mysql = new \PDO('mysql:host=127.0.0.1:33060;dbname=db', 'root', ''),
-            'sqlite' => $this->sqlite ?? $this->sqlite = new \PDO('sqlite:db.sqlite3'),
+            'mysql' => $this->mysql ?? $this->mysql = new \PDO(
+                'mysql:host=127.0.0.1:33060;dbname=db',
+                'root',
+                '',
+                [
+                    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION
+                ]
+            ),
+            'sqlite' => $this->sqlite ?? $this->sqlite = new \PDO(
+                'sqlite:db.sqlite3',
+                null,
+                null,
+                [
+                    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION
+                ]
+            ),
         ];
     }
 
@@ -23,8 +37,8 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
     }
 
     /**
-     * @fixtures sqlite
-     * @fixtures mysql
+     * @fixtures sqlite read-only bds.yml
+     * @fixtures mysql read-only bds.yml
      *
      * @dataProvider provideConnections
      */
@@ -51,8 +65,8 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
     }
 
     /**
-     * @fixtures sqlite fixtures.yml fixtures.yaml
-     * @fixtures mysql fixtures.yml fixtures.yaml
+     * @fixtures sqlite read-only bds.yml fixtures.yml fixtures.yaml
+     * @fixtures mysql read-only bds.yml fixtures.yml fixtures.yaml
      *
      * @dataProvider provideConnections
      */
@@ -78,16 +92,22 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         $this->assertSame($expected, $demo);
     }
 
-    function testErrorInFixturesWithSqlite() {
+    public function testErrorInFixturesWithSqlite() {
         $this->expectException(\PDOException::class);
-        $this->expectExceptionMessageRegExp('/^table demo has no column named usernames/');
-        $this->loadFixtures('sqlite', 'fixtures_with_error.yml');
+        $this->expectExceptionMessageMatches('/table demo has no column named usernames/');
+        $this->loadFixtures(
+            'sqlite',
+            $this->getAbsolutePathToFixture('fixtures_with_error.yml')
+        );
     }
 
-    function testErrorInFixturesWithMysql() {
+    public function testErrorInFixturesWithMysql() {
         $this->expectException(\PDOException::class);
-        $this->expectExceptionMessageRegExp('/^Unknown column \'usernames\' in \'field list\'/');
-        $this->loadFixtures('mysql', 'fixtures_with_error.yml');
+        $this->expectExceptionMessageMatches('/Unknown column \'usernames\' in \'field list\'/');
+        $this->loadFixtures(
+            'mysql',
+            $this->getAbsolutePathToFixture('fixtures_with_error.yml')
+        );
     }
 
     /**
@@ -96,7 +116,10 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
     function testBinaryFixturesSqlite(\PDO $pdo) {
         $connectionName = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
 
-        $this->loadFixtures($connectionName, 'fixtures_with_binary_data.yml');
+        $this->loadFixtures(
+            $connectionName,
+            $this->getAbsolutePathToFixture('fixtures_with_binary_data.yml')
+        );
 
         $stmt = $pdo->query('SELECT HEX(random_bytes) as hex FROM demo');
         $demo = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -109,4 +132,7 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         $this->assertSame($expected, $demo);
     }
 
+    private function getAbsolutePathToFixture(string $filename) {
+        return \dirname((new \ReflectionClass($this))->getFileName()) . '/' . $filename;
+    }
 }
