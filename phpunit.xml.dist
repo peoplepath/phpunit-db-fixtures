@@ -9,7 +9,7 @@
    </testsuites>
 
    <php>
-     <env name="DB_FIXTURES_BDS_mysql" value="tests/bds.yml"/>
-     <env name="DB_FIXTURES_BDS_sqlite" value="tests/bds.yml"/>
+     <env name="DB_FIXTURES_INCLUDE_PATHS_mysql" value="tests/bds/"/>
+     <env name="DB_FIXTURES_INCLUDE_PATHS_sqlite" value="tests/bds/"/>
    </php>
 </phpunit>
