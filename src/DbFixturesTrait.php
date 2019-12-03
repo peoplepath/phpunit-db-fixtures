@@ -144,9 +144,12 @@ trait DbFixturesTrait
     }
 
     private function resolveFilePath(string $connectionName, string $filename): string {
-        if ($bdsPath = getenv('DB_FIXTURES_BDS_PATH_' .$connectionName)) {
-            if (file_exists($bdsPath.$filename)) {
-                return $bdsPath.$filename;
+        if ($includePaths = getenv('DB_FIXTURES_INCLUDE_PATHS_' .$connectionName)) {
+            $includePaths = explode(':', $includePaths);
+            foreach ($includePaths as $includePath) {
+                if (file_exists($includePath.$filename)) {
+                    return $includePath.$filename;
+                }
             }
         }
 
