@@ -29,67 +29,60 @@ trait DbFixturesTrait
      */
     public function loadFixturesByAnnotations(): void {
         $annotations = $this->getAnnotations();
-        if ($fixtures = $annotations['method']['fixtures'] ?? []) {
-            $connections = $this->getConnections();
 
-            foreach ($fixtures as $fixture) {
-                [$connectionName, $mode, $args] = \explode(' ', $fixture, 3) + [null, null, null];
-
-                $filenames   = [];
-                $bdsFilename = null;
-                if ($args) {
-                    foreach (\explode(' ', $args) as $filename) {
-                        $filenames[] = $this->resolveFilePath($connectionName, $filename);
-                    }
-                }
-
-                $fixturesHash = md5(implode('-', $filenames));
-                if (isset(self::$loadedFixturesHash[$connectionName])
-                    && $fixturesHash === self::$loadedFixturesHash[$connectionName]
-                    && $mode === 'read-only'
-                    && self::$previousMode[$connectionName] === 'read-only'
-                ) {
-                    self::$previousMode[$connectionName] = $mode;
-                    break;
-                }
-
-                self::$loadedFixturesHash[$connectionName] = $fixturesHash;
-                self::$previousMode[$connectionName]       = $mode;
-
-                $this->loadFixtures($connectionName, ...$filenames);
+        $fixtures = [];
+        foreach ($annotations['method']['fixtures'] ?? [] as $fixture) {
+            [$connectionName, $mode, $args] = \explode(' ', $fixture, 3) + [null, null, null];
+            if (array_key_exists($connectionName, $fixtures)) {
+                [$newMode, $newArgs] = $fixtures[$connectionName];
+                $params = [$newMode, $newArgs.' '.$args];
+            } else {
+                $params = [$mode, $args];
             }
+
+            $fixtures[$connectionName]  = $params;
         }
+
+        foreach ($fixtures as $connectionName => [$mode, $args]) {
+            $filenames = [];
+            if ($args) {
+                foreach (\explode(' ', $args) as $filename) {
+                    $filenames[] = $this->resolveFilePath($connectionName, $filename);
+                }
+            }
+
+            $fixturesHash = md5(implode('-', $filenames));
+            if (isset(self::$loadedFixturesHash[$connectionName])
+                && $fixturesHash === self::$loadedFixturesHash[$connectionName]
+                && $mode === 'read-only'
+                && self::$previousMode[$connectionName] === 'read-only'
+            ) {
+                self::$previousMode[$connectionName] = $mode;
+                continue;
+            }
+
+            $this->loadFixtures($connectionName, ...$filenames);
+
+            self::$loadedFixturesHash[$connectionName] = $fixturesHash;
+            self::$previousMode[$connectionName]       = $mode;
+        }
+
     }
 
     protected function loadFixtures(string $connectionName, string ...$filenames): void {
         if ($connection = $this->getConnections()[$connectionName] ?? null) {
-            $data = [];
-
-            $bdsFilename = null;
-            // First file acts as a basic data set
-            if (count($filenames) > 1) {
-                $bdsFilename = array_shift($filenames);
+            switch(true) {
+                case $connection instanceof \PDO:
+                    $this->loadFixturesPdo($connection, ...$filenames);
+                    break;
+                case $connection instanceof \MongoDB\Database:
+                    $this->loadFixturesMongo($connection, ...$filenames);
+                    break;
+                default:
+                    throw new \InvalidArgumentException(
+                        'No suport for connection of type: '.get_class($connection)
+                    );
             }
-
-            foreach ($filenames as $filename) {
-                $data = array_merge_recursive($data, $this->loadFile($filename));
-            }
-
-            if ($bdsFilename !== null) {
-                $data = $this->normalizeFixtures($this->loadFile($bdsFilename), $data);
-            }
-
-            $sqls = [$this->disableForeignKeys($connection)];
-
-            $this->cleanTables($connection, $sqls);
-
-            foreach ($data as $table => $rows) {
-                $this->buildSql($connection, $table, $rows, $sqls);
-            }
-
-            $sqls[] = $this->enableForeignKeys($connection);
-
-            $this->executeSqls($connection, $sqls);
         } else {
             throw new \InvalidArgumentException('Connection "' . $connectionName . '" not found');
         }
@@ -107,7 +100,83 @@ trait DbFixturesTrait
         return array_merge_recursive($bdsData, $testData);
     }
 
-    protected function cleanTables(\PDO $pdo, &$sqls) : void {
+    private function loadFixturesMongo($connection, string ...$filenames) {
+        //walk trough each collection and remove all documents in it
+        foreach ($connection->listCollections() as $collection) {
+            // drop all with exception of system
+            if (0 !== mb_strpos($collection->getName(), 'system.')) {
+                $connection->dropCollection($collection->getName());
+            }
+        }
+
+        foreach ($filenames as $filename) {
+            if (!is_array($testData = Json::decode(
+                file_get_contents($filename), true))
+            ) {
+                throw new \InvalidArgumentException(
+                    sprintf(
+                        'Illegal fixtures %s' . PHP_EOL . 'json_decode: %s',
+                        $filename,
+                        json_last_error_msg()
+                    )
+                );
+            }
+
+            //transform data into JSONP format which can handle advanced types (eg. MongoId, MongoDate, etc.)
+            Json::jsonToJsonp($testData);
+
+            if (strpos($filename, '.meta') !== false) {
+                foreach ($testData as $collectionName => $config) {
+                    if (isset($config['indexes'])) {
+                        foreach ($config['indexes'] as $index) {
+                            $keys = $index['key'];
+                            unset($index['key']);
+                            $connection->selectCollection($collectionName)->createIndex($keys, $index);
+                        }
+                    }
+                }
+            } else {
+                foreach ($testData as $collectionName => $documents) {
+                    foreach ($documents as $document) {
+                        $connection->selectCollection($collectionName)->insertOne($document);
+                    }
+                }
+            }
+        }
+    }
+
+    private function loadFixturesPdo($connection, string ...$filenames) {
+        $data = [];
+
+        $bdsFilename = null;
+        // First file acts as a basic data set
+        if (count($filenames) > 1) {
+            $bdsFilename = array_shift($filenames);
+        }
+
+        foreach ($filenames as $filename) {
+            $data = array_merge_recursive($data, $this->loadFile($filename));
+        }
+
+        if ($bdsFilename !== null) {
+            $data = $this->normalizeFixtures($this->loadFile($bdsFilename), $data);
+        }
+
+        $sqls = [$this->disableForeignKeys($connection)];
+
+        $this->cleanTables($connection, $sqls);
+
+        foreach ($data as $table => $rows) {
+            $this->buildSql($connection, $table, $rows, $sqls);
+        }
+
+        $sqls[] = $this->enableForeignKeys($connection);
+
+        $this->executeSqls($connection, $sqls);
+    }
+
+
+    private function cleanTables(\PDO $pdo, &$sqls) : void {
         switch ($driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
             case 'mysql':
                 $this->cleanTablesMySQL($pdo, $sqls);
