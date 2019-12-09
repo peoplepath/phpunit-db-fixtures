@@ -7,3 +7,7 @@ services:
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: 1
       MYSQL_DATABASE: db
+  mongo:
+    image: mongo:4.0-xenial
+    ports:
+      - 27016:27017

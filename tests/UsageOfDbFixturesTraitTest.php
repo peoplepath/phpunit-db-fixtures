@@ -2,6 +2,8 @@
 
 namespace IW\PHPUnit\DbFixtures;
 
+use MongoDB\Client;
+
 final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
 {
     use DbFixturesTrait;
@@ -27,12 +29,17 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
                     \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION
                 ]
             ),
+            'mongo' => $this->mongo ?? $this->mongo = (new Client(
+                'mongodb://127.0.0.1:27016/db'
+                ))->selectDatabase('db')
         ];
     }
 
     public function provideConnections(): \Generator {
         foreach ($this->getConnections() as $name => $connection) {
-            yield $name => [$connection];
+            if ($connection instanceof \PDO) {
+                yield $name => [$connection];
+            }
         }
     }
 
@@ -65,6 +72,51 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
     }
 
     /**
+     * @fixtures mongo read-only bds.json
+     *
+     */
+    public function testBdsMongo(): void {
+        $database        = $this->getConnections()['mongo'];
+        $fieldCollection = $database->selectCollection('user');
+
+        $expected = [
+            [
+                '_id' => [
+                    '$oid' => '100000000000000000000001',
+                ],
+                '_created' => [
+                    '$date' => [
+                        '$numberLong' => '1490679017000',
+                    ],
+                ],
+                'username' => 'bob',
+            ],
+            [
+                '_id' => [
+                    '$oid' => '100000000000000000000002',
+                ],
+                '_created' => [
+                    '$date' => [
+                        '$numberLong' => '1553751017000',
+                    ],
+                ],
+                'username' => 'alice',
+            ],
+        ];
+
+        $foundDocuments = json_decode(
+            json_encode(
+                iterator_to_array(
+                    $fieldCollection->find()
+                )
+            ),
+            true
+        );
+
+        $this->assertSame($expected, $foundDocuments);
+    }
+
+    /**
      * @fixtures sqlite read-only bds.yml fixtures.yml fixtures.yaml
      * @fixtures mysql read-only bds.yml fixtures.yml fixtures.yaml
      *
@@ -92,6 +144,53 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         $this->assertSame($expected, $demo);
     }
 
+    /**
+     * @fixtures mongo read-only fixtures.json
+     *
+     */
+    public function testLoadingFixturesMongo(): void {
+        $database        = $this->getConnections()['mongo'];
+        $fieldCollection = $database->selectCollection('field');
+
+        $expected = [
+            [
+                '_id' => [
+                    '$oid' => '700000000000000000000001',
+                ],
+                '_created' => [
+                    '$date' => [
+                        '$numberLong' => '1490679017000',
+                    ],
+                ],
+                'name' => 'Name',
+                'type' => 'string',
+            ],
+            [
+                '_id' => [
+                    '$oid' => '700000000000000000000002',
+                ],
+                '_created' => [
+                    '$date' => [
+                        '$numberLong' => '1553751017000',
+                    ],
+                ],
+                'name' => 'Last name',
+                'type' => 'string',
+            ],
+        ];
+
+        $foundDocuments = json_decode(
+            json_encode(
+                iterator_to_array(
+                    $fieldCollection->find()
+                )
+            ),
+            true
+        );
+
+        $this->assertSame($expected, $foundDocuments);
+    }
+
     public function testErrorInFixturesWithSqlite() {
         $this->expectException(\PDOException::class);
         $this->expectExceptionMessageMatches('/table demo has no column named usernames/');
@@ -107,6 +206,15 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         $this->loadFixtures(
             'mysql',
             $this->getAbsolutePathToFixture('fixtures_with_error.yml')
+        );
+    }
+
+    public function testErrorInFixturesWithMongo() {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/Illegal fixtures/');
+        $this->loadFixtures(
+            'mongo',
+            $this->getAbsolutePathToFixture('fixtures_with_error.json')
         );
     }
 

@@ -1,0 +1,17 @@
+{
+  "field": [
+    // Yes, you can use comments!
+    {
+      "_id" : {"$oid": "700000000000000000000001"},
+      "_created" : {"$date": "2017-03-28T05:30:17.000Z"},
+      "name" : "Name",
+      "type" : "string"
+    },
+    {
+      "_id" : {"$oid": "700000000000000000000002"},
+      "_created" : {"$date": "2019-03-28T05:30:17.000Z"},
+      "name" : "Last name",
+      "type" : "string"
+    }
+  ]
+}
