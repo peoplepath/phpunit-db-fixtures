@@ -10,6 +10,8 @@ trait DbFixturesTrait
     private $location;
     private $filenames = [];
     private $currentDatabase = [];
+    private $fixturesCache = [];
+
     private static $loadedFixturesHash = [];
     private static $previousMode = [];
 
@@ -110,21 +112,7 @@ trait DbFixturesTrait
         }
 
         foreach ($filenames as $filename) {
-            if (!is_array($testData = Json::decode(
-                file_get_contents($filename), true))
-            ) {
-                throw new \InvalidArgumentException(
-                    sprintf(
-                        'Illegal fixtures %s' . PHP_EOL . 'json_decode: %s',
-                        $filename,
-                        json_last_error_msg()
-                    )
-                );
-            }
-
-            //transform data into JSONP format which can handle advanced types (eg. MongoId, MongoDate, etc.)
-            Json::jsonToJsonp($testData);
-
+            $testData = $this->parseJsonp($filename);
             if (strpos($filename, '.meta') !== false) {
                 foreach ($testData as $collectionName => $config) {
                     if (isset($config['indexes'])) {
@@ -143,6 +131,29 @@ trait DbFixturesTrait
                 }
             }
         }
+    }
+
+    private function parseJsonp($filename) {
+        $cache = $this->getCache();
+        if ($cache->has($filename) === false) {
+            if (!is_array($testData = Json::decode(
+                file_get_contents($filename), true))
+            ) {
+                throw new \InvalidArgumentException(
+                    sprintf(
+                        'Illegal fixtures %s' . PHP_EOL . 'json_decode: %s',
+                        $filename,
+                        json_last_error_msg()
+                    )
+                );
+            }
+
+            //transform data into JSONP format which can handle advanced types (eg. MongoId, MongoDate, etc.)
+            Json::jsonToJsonp($testData);
+            $cache->set($filename, $testData);
+        }
+
+        return $cache->get($filename);
     }
 
     private function loadFixturesPdo($connection, string ...$filenames) {
@@ -237,11 +248,21 @@ trait DbFixturesTrait
         throw new \InvalidArgumentException('Fixtures "' . $filename . '" not found');
     }
 
+    private function getCache() {
+        return Cache::getInstance();
+    }
+
     private function loadFile(string $filename): array {
         switch ($extension = \pathinfo($filename, \PATHINFO_EXTENSION)) {
             case 'yaml':
             case 'yml':
-                return Yaml::parse(file_get_contents($filename));
+                $cache = $this->getCache();
+                if ($cache->has($filename) === false) {
+                    $yaml = Yaml::parse(file_get_contents($filename));
+                    $cache->set($filename, $yaml);
+                }
+
+                return $cache->get($filename);
             default:
                 throw new \InvalidArgumentException('Unsupported extension "' . $extension . '"');
         }
