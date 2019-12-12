@@ -136,20 +136,28 @@ trait DbFixturesTrait
     private function parseJsonp($filename) {
         $cache = $this->getCache();
         if ($cache->has($filename) === false) {
-            if (!is_array($testData = Json::decode(
-                file_get_contents($filename), true))
-            ) {
-                throw new \InvalidArgumentException(
-                    sprintf(
-                        'Illegal fixtures %s' . PHP_EOL . 'json_decode: %s',
-                        $filename,
-                        json_last_error_msg()
-                    )
-                );
-            }
+            $testData = $this->cacheParsedFiles(
+                $filename,
+                static function ($filename) {
+                    if (!is_array($testData = Json::decode(
+                        file_get_contents($filename), true))
+                    ) {
+                        throw new \InvalidArgumentException(
+                            sprintf(
+                                'Illegal fixtures %s' . PHP_EOL . 'json_decode: %s',
+                                $filename,
+                                json_last_error_msg()
+                            )
+                        );
+                    }
 
-            //transform data into JSONP format which can handle advanced types (eg. MongoId, MongoDate, etc.)
-            Json::jsonToJsonp($testData);
+                    //transform data into JSONP format which can handle advanced types (eg. MongoId, MongoDate, etc.)
+                    Json::jsonToJsonp($testData);
+
+                    return $testData;
+                }
+            );
+
             $cache->set($filename, $testData);
         }
 
@@ -258,7 +266,12 @@ trait DbFixturesTrait
             case 'yml':
                 $cache = $this->getCache();
                 if ($cache->has($filename) === false) {
-                    $yaml = Yaml::parse(file_get_contents($filename));
+                    $yaml = $this->cacheParsedFiles(
+                        $filename,
+                        static function ($filename) {
+                            return Yaml::parse(file_get_contents($filename));
+                        }
+                    );
                     $cache->set($filename, $yaml);
                 }
 
@@ -266,6 +279,32 @@ trait DbFixturesTrait
             default:
                 throw new \InvalidArgumentException('Unsupported extension "' . $extension . '"');
         }
+    }
+
+    private function cacheParsedFiles($filename, $parsingFunction) {
+        $cacheDirectory = getenv('DB_FIXTURES_CACHE_DIR');
+
+        if ($cacheDirectory === false) {
+            return $parsingFunction($filename);
+        }
+
+        $cacheKey  = hash('sha256', $filename . filemtime($filename));
+        $folder    = $cacheDirectory . $cacheKey[0] . $cacheKey[1];
+        $cacheFile = $folder . '/' . $cacheKey . '.php';
+
+        if (file_exists($cacheFile)) {
+            $fixtures = include $cacheFile;
+        } else {
+            $fixtures = $parsingFunction($filename);
+
+            if (is_dir($folder) || mkdir($folder)) {
+                file_put_contents($cacheFile, '<?php return ' . var_export($fixtures, true) . ';');
+            } else {
+                trigger_error('Unable to access fixtures cache: ' . $folder);
+            }
+        }
+
+        return $fixtures;
     }
 
     private function disableForeignKeys(\PDO $pdo): string {
