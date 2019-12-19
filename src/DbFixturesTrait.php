@@ -77,11 +77,12 @@ trait DbFixturesTrait
                     $this->adapters[$connectionName] = new Adapter\Pdo(
                         Cache::getInstance(),
                         $this->getNormalizationStrategy(),
-                        new DriverFactory()
+                        new DriverFactory(),
+                        new FileCache()
                     );
                     break;
                 case $connection instanceof \MongoDB\Database:
-                    $this->adapters[$connectionName] = new Adapter\Mongo(Cache::getInstance());
+                    $this->adapters[$connectionName] = new Adapter\Mongo(Cache::getInstance(), new FileCache());
                     break;
                 default:
                     throw new \InvalidArgumentException(

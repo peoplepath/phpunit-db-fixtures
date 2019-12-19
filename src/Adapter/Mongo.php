@@ -4,13 +4,19 @@ namespace IW\PHPUnit\DbFixtures\Adapter;
 
 use IW\PHPUnit\DbFixtures\Adapter\Mongo\Json;
 use IW\PHPUnit\DbFixtures\Cache;
+use IW\PHPUnit\DbFixtures\FileCache;
 
 class Mongo
 {
+    /** @var Cache */
     private $cache;
 
-    public function __construct(Cache $cache) {
-        $this->cache = $cache;
+    /** @var FileCache */
+    private $fileCache;
+
+    public function __construct(Cache $cache, FileCache $fileCache) {
+        $this->cache     = $cache;
+        $this->fileCache = $fileCache;
     }
 
     public function loadFixtures($connection, string ...$filenames) : void {
@@ -56,22 +62,29 @@ class Mongo
         }
     }
 
-    private function parseJsonp($filename) : array {
+    private function parseJsonp(string $filename) {
         if ($this->cache->has($filename) === false) {
-            if (!is_array($testData = Json::decode(
-                file_get_contents($filename), true))
-            ) {
-                throw new \InvalidArgumentException(
-                    sprintf(
-                        'Illegal fixtures %s' . PHP_EOL . 'json_decode: %s',
-                        $filename,
-                        json_last_error_msg()
-                    )
-                );
-            }
+            $testData = $this->fileCache->get(
+                $filename,
+                static function ($filename) {
+                    if (!is_array($testData = Json::decode(
+                        file_get_contents($filename), true))
+                    ) {
+                        throw new \InvalidArgumentException(
+                            sprintf(
+                                'Illegal fixtures %s' . PHP_EOL . 'json_decode: %s',
+                                $filename,
+                                json_last_error_msg()
+                            )
+                        );
+                    }
 
-            //transform data into JSONP format which can handle advanced types (eg. MongoId, MongoDate, etc.)
-            Json::jsonToJsonp($testData);
+                    //transform data into JSONP format which can handle advanced types (eg. MongoId, MongoDate, etc.)
+                    Json::jsonToJsonp($testData);
+                    return $testData;
+                }
+            );
+
             $this->cache->set($filename, $testData);
         }
 

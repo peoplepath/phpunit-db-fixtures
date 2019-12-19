@@ -4,6 +4,7 @@ namespace IW\PHPUnit\DbFixtures\Adapter;
 
 use IW\PHPUnit\DbFixtures\Adapter\Pdo\PdoDriver;
 use IW\PHPUnit\DbFixtures\Cache;
+use IW\PHPUnit\DbFixtures\FileCache;
 use IW\PHPUnit\DbFixtures\NormalizationStrategy;
 use IW\PHPUnit\DbFixtures\Adapter\Pdo\DriverFactory;
 use Symfony\Component\Yaml\Yaml;
@@ -19,14 +20,19 @@ class Pdo
     /** @var DriverFactory */
     private $driverFactory;
 
+    /** @var FileCache */
+    private $fileCache;
+
     public function __construct(
         Cache $cache,
         NormalizationStrategy $normalizationStrategy,
-        DriverFactory $driverFactory
+        DriverFactory $driverFactory,
+        FileCache $fileCache
     ) {
         $this->cache                 = $cache;
         $this->normalizationStrategy = $normalizationStrategy;
         $this->driverFactory         = $driverFactory;
+        $this->fileCache             = $fileCache;
     }
 
     public function loadFixtures($connection, string ...$filenames) : void {
@@ -90,13 +96,17 @@ class Pdo
         switch ($extension = \pathinfo($filename, \PATHINFO_EXTENSION)) {
             case 'yaml':
             case 'yml':
-                $cache = $this->cache;
-                if ($cache->has($filename) === false) {
-                    $yaml = Yaml::parse(file_get_contents($filename));
-                    $cache->set($filename, $yaml);
+                if ($this->cache->has($filename) === false) {
+                    $yaml = $this->fileCache->get(
+                        $filename,
+                        static function ($filename) {
+                            return Yaml::parse(file_get_contents($filename));
+                        }
+                    );
+                    $this->cache->set($filename, $yaml);
                 }
 
-                return $cache->get($filename);
+                return $this->cache->get($filename);
             default:
                 throw new \InvalidArgumentException('Unsupported extension "' . $extension . '"');
         }
