@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace IW\PHPUnit\DbFixtures;
+namespace IW\PHPUnit\DbFixtures\Adapter\Mongo;
 
 use DateTime;
 use MongoDB\BSON\ObjectId;
