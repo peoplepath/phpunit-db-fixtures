@@ -80,6 +80,9 @@ trait DbFixturesTrait
                 case $connection instanceof \MongoDB\Database:
                     $this->loadFixturesMongo($connection, ...$filenames);
                     break;
+                case $connection instanceof \Elasticsearch\Client:
+                    $this->loadFixturesElastic($connection, ...$filenames);
+                    break;
                 default:
                     throw new \InvalidArgumentException(
                         'No suport for connection of type: '.get_class($connection)
@@ -100,6 +103,10 @@ trait DbFixturesTrait
      */
     protected function normalizeFixtures(array $bdsData, array $testData) : array {
         return array_merge_recursive($bdsData, $testData);
+    }
+
+    protected function resolveIndexPrefix() : string {
+        return '';
     }
 
     private function loadFixturesMongo($connection, string ...$filenames) {
@@ -194,6 +201,34 @@ trait DbFixturesTrait
         $this->executeSqls($connection, $sqls);
     }
 
+    private function loadFixturesElastic($connection, string ...$filenames) {
+        foreach ($filenames as $filename) {
+            $fixtures = $this->loadFile($filename);
+            foreach ($fixtures as $indexName => $data) {
+                $this->cleanIndex($connection, $this->resolveIndexPrefix() . $indexName);
+                $body = [];
+                foreach ($data as $doc) {
+                    $body[] =  [
+                        'index' => [
+                            '_index' => $this->resolveIndexPrefix() . $indexName,
+                            '_id'    => $doc['id']
+                        ]
+                    ];
+                    $body[] = $doc;
+                }
+
+                if (!empty($body)) {
+                    $connection->bulk(
+                        [
+                            'refresh' => 'wait_for',
+                            'body'    => $body
+                        ]
+                    );
+                }
+            }
+        }
+    }
+
 
     private function cleanTables(\PDO $pdo, &$sqls) : void {
         switch ($driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
@@ -203,6 +238,19 @@ trait DbFixturesTrait
             case 'sqlite':
                 $this->cleanTablesSQLite($pdo, $sqls);
         }
+    }
+
+    private function cleanIndex($connection, $indexName): void {
+        $connection->deleteByQuery(
+            [
+                'index' => $indexName,
+                'body'  => [
+                    'query' => [
+                        'match_all' => new \stdClass()
+                    ]
+                ]
+            ]
+        );
     }
 
     private function executeSqls(\PDO $pdo, array $sqls): void {
