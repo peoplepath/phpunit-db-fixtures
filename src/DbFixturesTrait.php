@@ -2,6 +2,7 @@
 
 namespace IW\PHPUnit\DbFixtures;
 
+use Elasticsearch\Common\Exceptions\Missing404Exception;
 use Symfony\Component\Yaml\Yaml;
 
 trait DbFixturesTrait
@@ -241,7 +242,7 @@ trait DbFixturesTrait
     }
 
     private function cleanIndex($connection, $indexName): void {
-        if ($connection->indices()->exists(['index' => $indexName])) {
+        try {
             $connection->deleteByQuery(
                 [
                     'index' => $indexName,
@@ -252,6 +253,8 @@ trait DbFixturesTrait
                     ]
                 ]
             );
+        } catch (Missing404Exception $e) {
+            // do noting
         }
     }
 
