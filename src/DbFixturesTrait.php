@@ -241,16 +241,18 @@ trait DbFixturesTrait
     }
 
     private function cleanIndex($connection, $indexName): void {
-        $connection->deleteByQuery(
-            [
-                'index' => $indexName,
-                'body'  => [
-                    'query' => [
-                        'match_all' => new \stdClass()
+        if ($connection->indices()->exists(['index' => $indexName])) {
+            $connection->deleteByQuery(
+                [
+                    'index' => $indexName,
+                    'body'  => [
+                        'query' => [
+                            'match_all' => new \stdClass()
+                        ]
                     ]
                 ]
-            ]
-        );
+            );
+        }
     }
 
     private function executeSqls(\PDO $pdo, array $sqls): void {
