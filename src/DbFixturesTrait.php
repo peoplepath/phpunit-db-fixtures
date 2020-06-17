@@ -248,9 +248,10 @@ trait DbFixturesTrait
                     'index' => $indexName,
                     'body'  => [
                         'query' => [
-                            'match_all' => new \stdClass()
+                            'match_all' => new \stdClass(),
                         ]
-                    ]
+                    ],
+                    'refresh'   => true,
                 ]
             );
         } catch (Missing404Exception $e) {
