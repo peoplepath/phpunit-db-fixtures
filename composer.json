@@ -23,6 +23,7 @@
         }
     },
     "require-dev": {
-        "robmorgan/phinx": "^0.12"
+        "robmorgan/phinx": "^0.12",
+        "mongodb/mongodb": "^1.5"
     }
 }
