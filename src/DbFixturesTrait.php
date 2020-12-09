@@ -4,6 +4,7 @@ namespace IW\PHPUnit\DbFixtures;
 
 use Elasticsearch\Common\Exceptions\Missing404Exception;
 use Symfony\Component\Yaml\Yaml;
+use PHPUnit\Util\Test;
 
 trait DbFixturesTrait
 {
@@ -31,7 +32,10 @@ trait DbFixturesTrait
      * @before
      */
     public function loadFixturesByAnnotations(): void {
-        $annotations = $this->getAnnotations();
+        $annotations = Test::parseTestMethodAnnotations(
+            static::class,
+            $this->getName(false)
+        );
 
         $fixtures = [];
         foreach ($annotations['method']['fixtures'] ?? [] as $fixture) {
