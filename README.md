@@ -10,14 +10,14 @@ final class MyTest extends TestCase
   use DbFixturesTrait;
 
   // returns connections to your DB, implementation is up to you, a singleton should be returned probably
-  protected function getConnections(): array {
-    return [
-      // key is name of DB, use it for distinction between multiple DBs
-      'mysql' => new \PDO(...),
-      'elastic' => new Elasticsearch\Client(...),
-    ];
+  protected function getConnection(string $name) {
+    switch ($name) {
+      case 'mysql': return new \PDO(...);
+      case 'elastic': return new Elasticsearch\Client(...);
+      default: return null;
+    }
   }
-  
+
   /**
    * @fixtures mysql read-only fixtures.yml
    */
