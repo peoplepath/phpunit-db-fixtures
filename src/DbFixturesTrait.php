@@ -3,6 +3,8 @@
 namespace IW\PHPUnit\DbFixtures;
 
 use Elasticsearch\Common\Exceptions\Missing404Exception;
+use ErrorException;
+use stdClass;
 use Symfony\Component\Yaml\Yaml;
 use PHPUnit\Util\Test;
 
@@ -247,17 +249,23 @@ trait DbFixturesTrait
 
     private function cleanIndex($connection, $indexName): void {
         try {
-            $connection->deleteByQuery(
-                [
-                    'index' => $indexName,
-                    'body'  => [
-                        'query' => [
-                            'match_all' => new \stdClass(),
-                        ]
-                    ],
-                    'refresh'   => true,
-                ]
-            );
+            do {
+                $result = $connection->deleteByQuery(
+                    [
+                        'index' => $indexName,
+                        'body'  => [
+                            'query' => [
+                                'match_all' => new stdClass(),
+                            ]
+                        ],
+                        'refresh'   => true,
+                        'conflicts' => 'proceed', // set to do not interrupt when conflict occurs
+                    ]
+                );
+                if (!empty($result['failures'])) {
+                    throw new ErrorException('Error occurred while running deleteByQuery.');
+                }
+            } while ($result['version_conflicts'] > 0);
         } catch (Missing404Exception $e) {
             // do noting
         }
