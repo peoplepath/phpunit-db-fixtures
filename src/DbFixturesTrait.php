@@ -464,7 +464,7 @@ trait DbFixturesTrait
 
         while ($row = $stmt->fetch()) {
             if ($this->isTableEmptyMySQL($row)) {
-                $sqls[] = \sprintf('TRUNCATE TABLE `%s`;', $row['TABLE_NAME']);
+                $pdo->exec(\sprintf('TRUNCATE TABLE `%s`;', $row['TABLE_NAME']));
             }
         }
     }
