@@ -4,11 +4,13 @@ services:
     image: mysql:8.0
     ports:
       - 33060:3306
-    command: --default-authentication-plugin=mysql_native_password
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --information-schema-stats-expiry=0                   # update metadata immediately
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: 1
       MYSQL_DATABASE: db
   mongo:
-    image: mongo:4.0-xenial
+    image: mongo:4.4
     ports:
       - 27016:27017

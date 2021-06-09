@@ -180,6 +180,7 @@ trait DbFixturesTrait
 
     private function loadFixturesPdo($connection, string ...$filenames) {
         $data = [];
+        $sqls = [];
 
         $bdsFilename = null;
         // First file acts as a basic data set
@@ -195,7 +196,7 @@ trait DbFixturesTrait
             $data = $this->normalizeFixtures($this->loadFile($bdsFilename), $data);
         }
 
-        $sqls = [$this->disableForeignKeys($connection)];
+        $this->disableForeignKeys($connection);
 
         $this->cleanTables($connection, $sqls);
 
@@ -203,9 +204,9 @@ trait DbFixturesTrait
             $this->buildSql($connection, $table, $rows, $sqls);
         }
 
-        $sqls[] = $this->enableForeignKeys($connection);
-
         $this->executeSqls($connection, $sqls);
+
+        $this->enableForeignKeys($connection);
     }
 
     private function loadFixturesElastic($connection, string ...$filenames) {
@@ -373,23 +374,27 @@ trait DbFixturesTrait
         return $fixtures;
     }
 
-    private function disableForeignKeys(\PDO $pdo): string {
+    private function disableForeignKeys(\PDO $pdo): void {
         switch ($driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
             case 'mysql':
-                return 'SET foreign_key_checks = 0;';
+                $pdo->exec('SET foreign_key_checks = 0');
+                return;
             case 'sqlite':
-                return 'PRAGMA foreign_keys = OFF;';
+                $pdo->exec('PRAGMA foreign_keys = OFF');
+                return;
         }
 
         throw new \InvalidArgumentException('Unsupported PDO driver: ' . $driver);
     }
 
-    private function enableForeignKeys(\PDO $pdo): string {
+    private function enableForeignKeys(\PDO $pdo): void {
         switch ($driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
             case 'mysql':
-                return 'SET foreign_key_checks = 1;';
+                $pdo->exec('SET foreign_key_checks = 1');
+                return;
             case 'sqlite':
-                return 'PRAGMA foreign_keys = ON;';
+                $pdo->exec('PRAGMA foreign_keys = ON');
+                return;
         }
 
         throw new \InvalidArgumentException('Unsupported PDO driver: ' . $driver);
@@ -464,7 +469,7 @@ trait DbFixturesTrait
 
         while ($row = $stmt->fetch()) {
             if ($this->isTableEmptyMySQL($row)) {
-                $sqls[] = \sprintf('TRUNCATE TABLE `%s`;', $row['TABLE_NAME']);
+                $pdo->exec(\sprintf('TRUNCATE TABLE `%s`;', $row['TABLE_NAME']));
             }
         }
     }
