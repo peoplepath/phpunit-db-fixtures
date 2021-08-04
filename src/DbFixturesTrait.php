@@ -8,6 +8,8 @@ use stdClass;
 use Symfony\Component\Yaml\Yaml;
 use PHPUnit\Util\Test;
 
+const AVAILABLE_MODES = ['read-only', 'write'];
+
 trait DbFixturesTrait
 {
     private $backup = [];
@@ -42,6 +44,13 @@ trait DbFixturesTrait
         $fixtures = [];
         foreach ($annotations['method']['fixtures'] ?? [] as $fixture) {
             [$connectionName, $mode, $args] = \explode(' ', $fixture, 3) + [null, null, null];
+
+            if (!in_array($mode, AVAILABLE_MODES)) {
+                throw new \UnexpectedValueException(
+                    sprintf('Wrong or missing mode of the fixture. Available modes [%s].', implode(', ', AVAILABLE_MODES))
+                );
+            }
+
             if (array_key_exists($connectionName, $fixtures)) {
                 [$newMode, $newArgs] = $fixtures[$connectionName];
                 $params = [$newMode, $newArgs.' '.$args];
