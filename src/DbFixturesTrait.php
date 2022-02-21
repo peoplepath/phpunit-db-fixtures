@@ -18,9 +18,6 @@ trait DbFixturesTrait
     private $currentDatabase = [];
     private $fixturesCache = [];
 
-    private static $loadedFixturesHash = [];
-    private static $previousMode = [];
-
     /**
      * Returns an array of DB connections to use
      *
@@ -69,22 +66,42 @@ trait DbFixturesTrait
                 }
             }
 
+            $cache        = $this->getCache();
             $fixturesHash = md5(implode('-', $filenames));
-            if (isset(self::$loadedFixturesHash[$connectionName])
-                && $fixturesHash === self::$loadedFixturesHash[$connectionName]
-                && $mode === 'read-only'
-                && self::$previousMode[$connectionName] === 'read-only'
+
+            if ($mode === 'read-only'
+                && $cache->has('loadedFixturesHash')
+                && array_key_exists($connectionName, $cache->get('loadedFixturesHash'))
+                && $cache->get('loadedFixturesHash')[$connectionName] === $fixturesHash
+                && $cache->get('previousMode')[$connectionName] === 'read-only'
             ) {
-                self::$previousMode[$connectionName] = $mode;
+                $previousMode                  = $cache->get('previousMode');
+                $previousMode[$connectionName] = $mode;
+
+                $cache->set('previousMode', $previousMode);
                 continue;
             }
 
             $this->loadFixtures($connectionName, ...$filenames);
 
-            self::$loadedFixturesHash[$connectionName] = $fixturesHash;
-            self::$previousMode[$connectionName]       = $mode;
-        }
+            // update loadedFixturesHash and previousMode - start
+            $loadedFixturesHash = [];
+            if ($cache->has('loadedFixturesHash')) {
+                $loadedFixturesHash = $cache->get('loadedFixturesHash');
+            }
 
+            $previousMode = [];
+            if ($cache->has('previousMode')) {
+                $previousMode = $cache->get('previousMode');
+            }
+
+            $loadedFixturesHash[$connectionName] = $fixturesHash;
+            $previousMode[$connectionName]       = $mode;
+
+            $cache->set('loadedFixturesHash', $loadedFixturesHash);
+            $cache->set('previousMode', $previousMode);
+            // update loadedFixturesHash and previousMode - end
+        }
     }
 
     protected function loadFixtures(string $connectionName, string ...$filenames): void {
