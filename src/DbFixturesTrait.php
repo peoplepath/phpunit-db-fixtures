@@ -277,7 +277,7 @@ trait DbFixturesTrait
             }
 
             if ($index['status'] > 200) {
-                $error .= 'Fixtures ID: ' . $index['_id'] . ' : ' . $index['error']['reason'] . PHP_EOL;
+                $error .= 'Fixtures ID: ' . $index['_id'] . ' : ' . ($index['error']['reason'] ?? '') . PHP_EOL;
             }
         }
 
