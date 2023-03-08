@@ -12,9 +12,14 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
     private $sqlite;
 
     protected function getConnections(): array {
+        $mysqlServer = getenv('MYSQL_SERVER') !== false ? getenv('MYSQL_SERVER') : '127.0.0.1';
+        $mysqlPort   = getenv('MYSQL_PORT') !== false ? getenv('MYSQL_PORT') : '33060';
+
+        $mongoServer = getenv('MONGO_SERVER') !== false ? getenv('MONGO_SERVER') : '127.0.0.1';
+        $mongoPort   = getenv('MONGO_PORT') !== false ? getenv('MONGO_PORT') : '27016';
         return [
             'mysql' => $this->mysql ?? $this->mysql = new \PDO(
-                'mysql:host=127.0.0.1:33060;dbname=db',
+                'mysql:host='.$mysqlServer.':'.$mysqlPort.';dbname=db',
                 'root',
                 '',
                 [
@@ -30,7 +35,7 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
                 ]
             ),
             'mongo' => $this->mongo ?? $this->mongo = (new Client(
-                'mongodb://127.0.0.1:27016/db'
+                'mongodb://'.$mongoServer.':'.$mongoPort.'/db'
                 ))->selectDatabase('db')
         ];
     }
