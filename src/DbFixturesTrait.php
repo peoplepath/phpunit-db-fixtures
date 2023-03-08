@@ -252,15 +252,36 @@ trait DbFixturesTrait
                 }
 
                 if (!empty($body)) {
-                    $connection->bulk(
+                    $response = $connection->bulk(
                         [
                             'refresh' => 'wait_for',
                             'body'    => $body
                         ]
                     );
+
+                    if ($response['errors'] ?? false) {
+                        $this->throwElasticErrors($response['items'] ?? []);
+                    }
                 }
             }
         }
+    }
+
+    private function throwElasticErrors(array $items) : void {
+        $error = 'Illegal fixtures: ' . PHP_EOL;
+        foreach ($items as $item) {
+            $index = $item['index'] ?? null;
+
+            if (!$index) {
+                continue;
+            }
+
+            if ($index['status'] > 200) {
+                $error .= 'Fixtures ID: ' . $index['_id'] . ' : ' . ($index['error']['reason'] ?? '') . PHP_EOL;
+            }
+        }
+
+        throw new \InvalidArgumentException($error);
     }
 
 
