@@ -2,45 +2,50 @@
 
 namespace IW\PHPUnit\DbFixtures;
 
-use MongoDB\Client;
+use MongoDB\Database;
+use MongoDB;
+use PDO;
 
 final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
 {
     use DbFixturesTrait;
 
-    private $mysql;
-    private $sqlite;
+    private PDO $mysql;
+    private PDO $sqlite;
+    private MongoDB\Database $mongo;
 
-    protected function getConnections(): array {
-        return [
-            'mysql' => $this->mysql ?? $this->mysql = new \PDO(
-                'mysql:host=127.0.0.1:33060;dbname=db',
-                'root',
-                '',
-                [
-                    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION
-                ]
-            ),
-            'sqlite' => $this->sqlite ?? $this->sqlite = new \PDO(
-                'sqlite:db.sqlite3',
-                null,
-                null,
-                [
-                    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION
-                ]
-            ),
-            'mongo' => $this->mongo ?? $this->mongo = (new Client(
-                'mongodb://127.0.0.1:27016/db'
-                ))->selectDatabase('db')
-        ];
+    protected function getConnection(string $name) {
+        switch ($name) {
+            case 'mysql':
+                return $this->mysql ??= new PDO(
+                    'mysql:host=127.0.0.1:33060;dbname=db',
+                    'root',
+                    '',
+                    [
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    ]
+                );
+            case 'sqlite':
+                return $this->sqlite ??= new PDO(
+                    'sqlite:db.sqlite3',
+                    null,
+                    null,
+                    [
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                    ]
+                );
+            case 'mongo':
+                return $this->mongo = (new MongoDB\Client('mongodb://127.0.0.1:27016/db'))
+                    ->selectDatabase('db');
+        }
+
+        return null;
     }
 
     public function provideConnections(): \Generator {
-        foreach ($this->getConnections() as $name => $connection) {
-            if ($connection instanceof \PDO) {
-                yield $name => [$connection];
-            }
-        }
+        yield 'mysql' => [$this->getConnection('mysql')];
+        yield 'sqlite' => [$this->getConnection('sqlite')];
+        yield 'mongo' => [$this->getConnection('mongo')];
     }
 
     /**
@@ -76,7 +81,7 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
      *
      */
     public function testBdsMongo(): void {
-        $database        = $this->getConnections()['mongo'];
+        $database        = $this->getConnection('mongo');
         $fieldCollection = $database->selectCollection('user');
 
         $expected = [
@@ -149,7 +154,7 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
      *
      */
     public function testLoadingFixturesMongo(): void {
-        $database        = $this->getConnections()['mongo'];
+        $database        = $this->getConnection('mongo');
         $fieldCollection = $database->selectCollection('field');
 
         $expected = [
