@@ -8,7 +8,7 @@ use MongoDB;
 use PDO;
 use stdClass;
 use Symfony\Component\Yaml\Yaml;
-use PHPUnit\Util\Test;
+use PHPUnit\Metadata\Annotation\Parser\Registry;
 
 const AVAILABLE_MODES = ['read-only', 'write'];
 
@@ -37,13 +37,13 @@ trait DbFixturesTrait
      * @before
      */
     public function loadFixturesByAnnotations(): void {
-        $annotations = Test::parseTestMethodAnnotations(
+        $annotations = Registry::getInstance()->forMethod(
             static::class,
-            $this->getName(false)
-        );
+            $this->name()
+        )->symbolAnnotations();
 
         $fixtures = [];
-        foreach ($annotations['method']['fixtures'] ?? [] as $fixture) {
+        foreach ($annotations['fixtures'] ?? [] as $fixture) {
             [$connectionName, $mode, $args] = \explode(' ', $fixture, 3) + [null, null, null];
 
             if (!in_array($mode, AVAILABLE_MODES)) {

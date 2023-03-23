@@ -49,10 +49,12 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
      * @fixtures sqlite read-only bds.yml
      * @fixtures mysql read-only bds.yml
      *
-     * @dataProvider provideConnections
-     * @requires @requires PHP >= 8.1
+     * @testWith ["mysql"]
+     *           ["sqlite"]
      */
-    public function testBds(\PDO $connection): void {
+    public function testBds(string $connectionName): void {
+        $connection = $this->getConnection($connectionName);
+
         $stmt = $connection->query('SELECT * FROM demo');
         $demo = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
@@ -123,9 +125,12 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
      * @fixtures sqlite read-only bds.yml fixtures.yml fixtures.yaml
      * @fixtures mysql read-only bds.yml fixtures.yml fixtures.yaml
      *
-     * @dataProvider provideConnections
+     * @testWith ["mysql"]
+     *           ["sqlite"]
      */
-    public function testLoadingFixtures(\PDO $connection): void {
+    public function testLoadingFixtures(string $connectionName): void {
+        $connection = $this->getConnection($connectionName);
+
         $stmt = $connection->query('SELECT username FROM demo');
         $demo = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
@@ -222,9 +227,12 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
     }
 
     /**
-     * @dataProvider provideConnections
+     * @testWith ["mysql"]
+     *           ["sqlite"]
      */
-    function testBinaryFixturesSqlite(\PDO $pdo) {
+    function testBinaryFixturesSqlite(string $connectionName) {
+        $pdo = $this->getConnection($connectionName);
+
         $connectionName = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
 
         $this->loadFixtures(
