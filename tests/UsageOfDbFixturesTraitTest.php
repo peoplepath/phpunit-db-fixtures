@@ -2,17 +2,21 @@
 
 namespace IW\PHPUnit\DbFixtures;
 
+use Elasticsearch;
+use MongoDB;
+use PDO;
 use MongoDB\Client;
 
 final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
 {
     use DbFixturesTrait;
 
+    private $mongo;
     private $mysql;
     private $sqlite;
 
-    protected function getConnections(): array {
-        return [
+    protected function getConnection(string $connectionName): PDO|MongoDB\Database|Elasticsearch\Client {
+        return match ($connectionName) {
             'mysql' => $this->mysql ?? $this->mysql = new \PDO(
                 'mysql:host=127.0.0.1:33060;dbname=db',
                 'root',
@@ -32,14 +36,12 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
             'mongo' => $this->mongo ?? $this->mongo = (new Client(
                 'mongodb://127.0.0.1:27016/db'
                 ))->selectDatabase('db')
-        ];
+        };
     }
 
     public function provideConnections(): \Generator {
-        foreach ($this->getConnections() as $name => $connection) {
-            if ($connection instanceof \PDO) {
-                yield $name => [$connection];
-            }
+        foreach (['mysql', 'sqlite'] as $connectionName) {
+            yield $connectionName => [$this->getConnection($connectionName)];
         }
     }
 
@@ -76,7 +78,7 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
      *
      */
     public function testBdsMongo(): void {
-        $database        = $this->getConnections()['mongo'];
+        $database        = $this->getConnection('mongo');
         $fieldCollection = $database->selectCollection('user');
 
         $expected = [
@@ -149,7 +151,7 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
      *
      */
     public function testLoadingFixturesMongo(): void {
-        $database        = $this->getConnections()['mongo'];
+        $database        = $this->getConnection('mongo');
         $fieldCollection = $database->selectCollection('field');
 
         $expected = [

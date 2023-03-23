@@ -3,7 +3,9 @@
 namespace IW\PHPUnit\DbFixtures;
 
 use Elasticsearch\Common\Exceptions\Missing404Exception;
-use ErrorException;
+use Elasticsearch;
+use MongoDB;
+use PDO;
 use stdClass;
 use Symfony\Component\Yaml\Yaml;
 use PHPUnit\Util\Test;
@@ -19,11 +21,13 @@ trait DbFixturesTrait
     private $fixturesCache = [];
 
     /**
-     * Returns an array of DB connections to use
+     * Returns a connection for given connectionName
      *
-     * @return array
+     * @param string $connectionName
+     *
+     * @return PDO|MongoDB\Database|Elasticsearch\Client
      */
-    abstract protected function getConnections(): array;
+    abstract protected function getConnection(string $connectionName) : mixed;
 
     /**
      * Loads any fixtures mentioned in annotations
@@ -105,7 +109,7 @@ trait DbFixturesTrait
     }
 
     protected function loadFixtures(string $connectionName, string ...$filenames): void {
-        if ($connection = $this->getConnections()[$connectionName] ?? null) {
+        if ($connection = $this->getConnection($connectionName) ?? null) {
             switch(true) {
                 case $connection instanceof \PDO:
                     $this->loadFixturesPdo($connection, ...$filenames);
@@ -323,7 +327,6 @@ trait DbFixturesTrait
         if (!$pdo->beginTransaction()) {
             $this->throwPDOException($pdo, 'BEGIN TRANSACTION');
         }
-
         try {
             foreach ($sqls as $sql) {
                 if ($pdo->exec($sql) === false) {
