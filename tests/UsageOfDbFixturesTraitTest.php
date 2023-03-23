@@ -50,6 +50,7 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
      * @fixtures mysql read-only bds.yml
      *
      * @dataProvider provideConnections
+     * @requires @requires PHP >= 8.1
      */
     public function testBds(\PDO $connection): void {
         $stmt = $connection->query('SELECT * FROM demo');
@@ -57,13 +58,13 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
 
         $expected = [
             [
-                'id'           => '1',
+                'id'           => 1,
                 'username'     => 'user1',
                 'created'      => '2011-11-11 11:11:11',
                 'random_bytes' => null,
             ],
             [
-                'id'           => '2',
+                'id'           => 2,
                 'username'     => 'user2',
                 'created'      => '2012-12-12 12:12:12',
                 'random_bytes' => null,
