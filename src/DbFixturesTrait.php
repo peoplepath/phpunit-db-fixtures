@@ -299,7 +299,7 @@ trait DbFixturesTrait
         }
     }
 
-    private function cleanIndex($connection, $indexName): void {
+    protected function cleanIndex($connection, $indexName): void {
         try {
             do {
                 $result = $connection->deleteByQuery(
