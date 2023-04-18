@@ -9,6 +9,7 @@ use PDO;
 use stdClass;
 use Symfony\Component\Yaml\Yaml;
 use PHPUnit\Metadata\Annotation\Parser\Registry;
+use PHPUnit\Util\Test;
 
 const AVAILABLE_MODES = ['read-only', 'write'];
 
@@ -37,10 +38,17 @@ trait DbFixturesTrait
      * @before
      */
     public function loadFixturesByAnnotations(): void {
-        $annotations = Registry::getInstance()->forMethod(
-            static::class,
-            $this->name()
-        )->symbolAnnotations();
+        if (method_exists(Test::class, 'parseTestMethodAnnotations')) {
+            $annotations = $annotations = Test::parseTestMethodAnnotations(
+                static::class,
+                $this->getName(false)
+            )['method'] ?? [];
+        } else {
+            $annotations = Registry::getInstance()->forMethod(
+                static::class,
+                $this->name()
+            )->symbolAnnotations();
+        }
 
         $fixtures = [];
         foreach ($annotations['fixtures'] ?? [] as $fixture) {
