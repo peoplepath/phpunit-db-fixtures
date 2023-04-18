@@ -10,12 +10,12 @@ final class MyTest extends TestCase
   use DbFixturesTrait;
 
   // returns connections to your DB, implementation is up to you, a singleton should be returned probably
-  protected function getConnections(): array {
-    return [
+  protected function getConnections(string $connectionName): array {
+    return match ($connectionName) {
       // key is name of DB, use it for distinction between multiple DBs
       'mysql' => new \PDO(...),
       'elastic' => new Elasticsearch\Client(...),
-    ];
+    };
   }
   
   /**
