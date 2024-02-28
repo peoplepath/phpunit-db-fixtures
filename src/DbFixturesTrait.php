@@ -2,9 +2,9 @@
 
 namespace IW\PHPUnit\DbFixtures;
 
-use Elasticsearch\Common\Exceptions\Missing404Exception;
 use Elasticsearch;
 use MongoDB;
+use OpenSearch;
 use PDO;
 use stdClass;
 use Symfony\Component\Yaml\Yaml;
@@ -26,7 +26,7 @@ trait DbFixturesTrait
      *
      * @param string $connectionName
      *
-     * @return PDO|MongoDB\Database|Elasticsearch\Client
+     * @return PDO|MongoDB\Database|Elasticsearch\Client|OpenSearch\Client
      */
     abstract protected function getConnection(string $connectionName) : mixed;
 
@@ -126,6 +126,7 @@ trait DbFixturesTrait
                     $this->loadFixturesMongo($connection, ...$filenames);
                     break;
                 case $connection instanceof \Elasticsearch\Client:
+                case $connection instanceof \OpenSearch\Client:
                     $this->loadFixturesElastic($connection, ...$filenames);
                     break;
                 default:
@@ -326,7 +327,7 @@ trait DbFixturesTrait
                     throw new ErrorException('Error occurred while running deleteByQuery.');
                 }
             } while ($result['version_conflicts'] > 0);
-        } catch (Missing404Exception $e) {
+        } catch (Elasticsearch\Common\Exceptions\Missing404Exception | OpenSearch\Common\Exceptions\Missing404Exception $e) {
             // do noting
         }
     }

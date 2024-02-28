@@ -15,6 +15,7 @@
         "symfony/yaml": "^6.0"
     },
     "suggest": {
+        "opensearch-project/opensearch-php" : "Needed for OpenSearch support",
         "elasticsearch/elasticsearch" : "Needed to support Elasticsearch",
         "mongodb/mongodb" : "Needed to support MongoDB"
     },
