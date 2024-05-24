@@ -267,7 +267,7 @@ trait DbFixturesTrait
                 if (!empty($body)) {
                     $response = $connection->bulk(
                         [
-                            'refresh' => 'wait_for',
+                            'refresh' => 'true',
                             'body'    => $body
                         ]
                     );
