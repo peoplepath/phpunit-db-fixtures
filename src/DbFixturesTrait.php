@@ -8,6 +8,7 @@ use OpenSearch;
 use PDO;
 use stdClass;
 use Symfony\Component\Yaml\Yaml;
+use PHPUnit\Framework\Attributes\Before;
 use PHPUnit\Metadata\Annotation\Parser\Registry;
 use PHPUnit\Util\Test;
 
@@ -37,6 +38,7 @@ trait DbFixturesTrait
      *
      * @before
      */
+    #[Before]
     public function loadFixturesByAnnotations(): void {
         if (method_exists(Test::class, 'parseTestMethodAnnotations')) {
             $annotations = $annotations = Test::parseTestMethodAnnotations(
