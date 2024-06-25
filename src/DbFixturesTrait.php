@@ -7,12 +7,12 @@ use MongoDB;
 use OpenSearch;
 use PDO;
 use stdClass;
+use ReflectionMethod;
 use Symfony\Component\Yaml\Yaml;
 use PHPUnit\Framework\Attributes\Before;
 use PHPUnit\Metadata\Annotation\Parser\Registry;
 use PHPUnit\Util\Test;
-
-const AVAILABLE_MODES = ['read-only', 'write'];
+use PHPUnit\Event\Facade as EventFacade;
 
 trait DbFixturesTrait
 {
@@ -40,44 +40,40 @@ trait DbFixturesTrait
      */
     #[Before]
     public function loadFixturesByAnnotations(): void {
-        if (method_exists(Test::class, 'parseTestMethodAnnotations')) {
-            $annotations = $annotations = Test::parseTestMethodAnnotations(
-                static::class,
-                $this->getName(false)
-            )['method'] ?? [];
-        } else {
-            $annotations = Registry::getInstance()->forMethod(
-                static::class,
-                $this->name()
-            )->symbolAnnotations();
-        }
+        $annotations = Registry::getInstance()->forMethod(
+            static::class,
+            $this->name()
+        )->symbolAnnotations();
 
         $fixtures = [];
         foreach ($annotations['fixtures'] ?? [] as $fixture) {
-            [$connectionName, $mode, $args] = \explode(' ', $fixture, 3) + [null, null, null];
+            [$connectionName, $mode, $files] = \explode(' ', $fixture, 3) + [null, null, null];
 
-            if (!in_array($mode, AVAILABLE_MODES)) {
-                throw new \UnexpectedValueException(
-                    sprintf('Wrong or missing mode of the fixture. Available modes [%s].', implode(', ', AVAILABLE_MODES))
-                );
+            $fixture = new Fixtures($connectionName, $mode, ...explode(' ', $files));
+
+            if (isset($fixtures[$connectionName])) {
+                $fixture = $fixture->mergeWith($fixtures[$connectionName]);
             }
 
-            if (array_key_exists($connectionName, $fixtures)) {
-                [$newMode, $newArgs] = $fixtures[$connectionName];
-                $params = [$newMode, $newArgs.' '.$args];
-            } else {
-                $params = [$mode, $args];
-            }
-
-            $fixtures[$connectionName]  = $params;
+            $fixtures[$connectionName] = $fixture;
         }
 
-        foreach ($fixtures as $connectionName => [$mode, $args]) {
+        foreach ((new ReflectionMethod($this, $this->name()))->getAttributes(Fixtures::class) as $attribute) {
+            $fixture = $attribute->newInstance();
+
+            if (isset($fixtures[$fixture->label])) {
+                $fixture = $fixture->mergeWith($fixtures[$fixture->label]);
+            }
+
+            $fixtures[$fixture->label] = $fixture;
+        }
+
+        foreach ($fixtures as $connectionName => $fixture) {
+            $mode = $fixture->mode;
+
             $filenames = [];
-            if ($args) {
-                foreach (\explode(' ', $args) as $filename) {
-                    $filenames[] = $this->resolveFilePath($connectionName, $filename);
-                }
+            foreach ($fixture->files as $filename) {
+                $filenames[] = $this->resolveFilePath($connectionName, $filename);
             }
 
             $cache        = $this->getCache();

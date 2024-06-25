@@ -4,6 +4,7 @@ Simple DB fixtures loading, replacement for phpunit/dbunit
 ## Usage
 ```php
 use IW\PHPUnit\DbFixtures\DbFixturesTrait;
+use IW\PHPUnit\DbFixtures\Fixtures;
 
 final class MyTest extends TestCase
 {
@@ -17,10 +18,8 @@ final class MyTest extends TestCase
       'elastic' => new Elasticsearch\Client(...),
     };
   }
-  
-  /**
-   * @fixtures mysql read-only fixtures.yml
-   */
+
+  #[Fixtures('mysql', 'read-only', 'fixtures.yml')]
   public function testWithFixtures() {
     // before test data from fixtures.yml will be loaded into mysql
   }
