@@ -3,9 +3,11 @@
 namespace IW\PHPUnit\DbFixtures;
 
 use Elasticsearch;
+use IW\PHPUnit\DbFixtures\Fixtures;
 use MongoDB;
-use PDO;
 use MongoDB\Client;
+use PDO;
+use PHPUnit\Framework\Attributes\TestWith;
 
 final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
 {
@@ -52,6 +54,14 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
      * @testWith ["mysql"]
      *           ["sqlite"]
      */
+    public function testBdsWithAnnotations(string $label): void {
+        $this->testBds($label);
+    }
+
+    #[Fixtures('mysql', 'read-only', 'bds.yml')]
+    #[Fixtures('sqlite', 'read-only', 'bds.yml')]
+    #[TestWith(['mysql'])]
+    #[TestWith(['sqlite'])]
     public function testBds(string $connectionName): void {
         $connection = $this->getConnection($connectionName);
 
@@ -76,10 +86,7 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         $this->assertSame($expected, $demo);
     }
 
-    /**
-     * @fixtures mongo read-only bds.json
-     *
-     */
+    #[Fixtures('mongo', 'read-only', 'bds.json')]
     public function testBdsMongo(): void {
         $database        = $this->getConnection('mongo');
         $fieldCollection = $database->selectCollection('user');
@@ -121,13 +128,10 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         $this->assertSame($expected, $foundDocuments);
     }
 
-    /**
-     * @fixtures sqlite read-only bds.yml fixtures.yml fixtures.yaml
-     * @fixtures mysql read-only bds.yml fixtures.yml fixtures.yaml
-     *
-     * @testWith ["mysql"]
-     *           ["sqlite"]
-     */
+    #[Fixtures('mysql', 'read-only', 'bds.yml', 'fixtures.yml', 'fixtures.yaml')]
+    #[Fixtures('sqlite', 'read-only', 'bds.yml', 'fixtures.yml', 'fixtures.yaml')]
+    #[TestWith(['mysql'])]
+    #[TestWith(['sqlite'])]
     public function testLoadingFixtures(string $connectionName): void {
         $connection = $this->getConnection($connectionName);
 
@@ -152,10 +156,7 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         $this->assertSame($expected, $demo);
     }
 
-    /**
-     * @fixtures mongo read-only fixtures.json
-     *
-     */
+    #[Fixtures('mongo', 'read-only', 'fixtures.json')]
     public function testLoadingFixturesMongo(): void {
         $database        = $this->getConnection('mongo');
         $fieldCollection = $database->selectCollection('field');
