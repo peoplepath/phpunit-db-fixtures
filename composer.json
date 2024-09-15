@@ -27,6 +27,7 @@
     "require-dev": {
         "robmorgan/phinx": "^0.12",
         "mongodb/mongodb": "^1.5",
-        "symfony/yaml": "^7"
+        "symfony/yaml": "^7",
+        "rector/rector": "^1.2"
     }
 }
