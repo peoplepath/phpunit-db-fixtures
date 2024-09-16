@@ -27,7 +27,7 @@ final readonly class Fixtures
         return new Fixtures(
             $this->label,
             in_array('write', [$fixtures->mode, $this->mode]) ? 'write' : 'read-only',
-            array_values(array_unique(array_merge($fixtures->files, $this->files))),
+            ...array_values(array_unique(array_merge($fixtures->files, $this->files))),
         );
     }
 }

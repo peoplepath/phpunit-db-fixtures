@@ -94,15 +94,19 @@ final class FixturesAnnotationToAttributeRector extends AbstractRector implement
 
         foreach ($phpDocInfo->getTagsByName('fixtures') as $fixturesPhpDocTagNode) {
             /** @var PhpDocTagNode $fixturesPhpDocTagNode */
-            if (!$fixturesPhpDocTagNode->value instanceof DoctrineAnnotationTagValueNode) {
-                continue; // no value
+
+            // extract attribute params configuration
+            if ($fixturesPhpDocTagNode->value instanceof DoctrineAnnotationTagValueNode) {
+                $fixtures = explode(' ', $fixturesPhpDocTagNode->value->getAttribute('attribute_comment'));
+            } elseif ($fixturesPhpDocTagNode->value instanceof \PHPStan\PhpDocParser\Ast\PhpDoc\GenericTagValueNode) {
+                $fixtures = explode(' ', $fixturesPhpDocTagNode->value->value);
+            } else {
+                continue;
             }
 
             // test from doc blocks
             $this->phpDocTagRemover->removeTagValueFromNode($phpDocInfo, $fixturesPhpDocTagNode);
 
-            // extract attribute params configuration
-            $fixtures = explode(' ', $fixturesPhpDocTagNode->value->getAttribute('attribute_comment'));
 
             $attributeGroups[] = $this->phpAttributeGroupFactory
                 ->createFromClassWithItems(Fixtures::class, [$fixtures]);
