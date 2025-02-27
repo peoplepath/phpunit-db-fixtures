@@ -154,8 +154,15 @@ trait DbFixturesTrait
         return array_merge_recursive($bdsData, $testData);
     }
 
-    protected function resolveIndexPrefix() : string {
-        return '';
+    /**
+     * Allow modify index name from the fixtures to actual name of the index in the engine
+     *
+     * @param string $indexName
+     *
+     * @return string
+     */
+    protected function resolveIndexName(string $indexName) : string {
+        return $indexName;
     }
 
     private function loadFixturesMongo($connection, string ...$filenames) {
@@ -255,12 +262,12 @@ trait DbFixturesTrait
         foreach ($filenames as $filename) {
             $fixtures = $this->loadFile($filename);
             foreach ($fixtures as $indexName => $data) {
-                $this->cleanIndex($connection, $this->resolveIndexPrefix() . $indexName);
+                $this->cleanIndex($connection,  $indexName);
                 $body = [];
                 foreach ($data as $doc) {
                     $body[] =  [
                         'index' => [
-                            '_index' => $this->resolveIndexPrefix() . $indexName,
+                            '_index' => $this->resolveIndexName($indexName),
                             '_id'    => $doc['id']
                         ]
                     ];
@@ -316,7 +323,7 @@ trait DbFixturesTrait
             do {
                 $result = $connection->deleteByQuery(
                     [
-                        'index' => $indexName,
+                        'index' => $this->resolveIndexName($indexName),
                         'body'  => [
                             'query' => [
                                 'match_all' => new stdClass(),
