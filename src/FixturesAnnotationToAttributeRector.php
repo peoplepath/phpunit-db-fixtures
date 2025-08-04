@@ -59,7 +59,7 @@ final class FixturesAnnotationToAttributeRector extends AbstractRector implement
 
                     final class SomeFixture extends TestCase
                     {
-                        #[Fixtures(['mysql', 'write', 'users.yml', 'jobs.yml'])]
+                        #[Fixtures('mysql', 'write', 'users.yml', 'jobs.yml')]
                         public function test(): void
                         {
                         }
@@ -109,7 +109,7 @@ final class FixturesAnnotationToAttributeRector extends AbstractRector implement
 
 
             $attributeGroups[] = $this->phpAttributeGroupFactory
-                ->createFromClassWithItems(Fixtures::class, [$fixtures]);
+                ->createFromClassWithItems(Fixtures::class, $fixtures);
         }
 
         $this->docBlockUpdater->updateRefactoredNodeWithPhpDocInfo($node);
