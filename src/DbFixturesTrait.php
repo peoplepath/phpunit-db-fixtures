@@ -35,33 +35,10 @@ trait DbFixturesTrait
      * Loads any fixtures mentioned in annotations
      *
      * @return void
-     *
-     * @before
      */
     #[Before]
     public function loadFixturesByAnnotations(): void {
-        $annotations = Registry::getInstance()->forMethod(
-            static::class,
-            $this->name()
-        )->symbolAnnotations();
-
         $fixtures = [];
-        foreach ($annotations['fixtures'] ?? [] as $fixture) {
-            [$connectionName, $mode, $files] = \explode(' ', $fixture, 3) + [null, null, null];
-
-            $fixture = new Fixtures($connectionName, $mode, ...explode(' ', $files));
-
-            if (isset($fixtures[$connectionName])) {
-                $fixture = $fixture->mergeWith($fixtures[$connectionName]);
-            }
-
-            $fixtures[$connectionName] = $fixture;
-
-            EventFacade::emitter()->testTriggeredPhpunitDeprecation(
-                $this->valueObjectForEvents(),
-                'Annotation @fixtures is deprecated, use attribute Fixtures instead',
-            );
-        }
 
         foreach ((new ReflectionMethod($this, $this->name()))->getAttributes(Fixtures::class) as $attribute) {
             $fixture = $attribute->newInstance();

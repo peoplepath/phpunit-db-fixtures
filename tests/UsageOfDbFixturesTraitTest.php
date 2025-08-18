@@ -47,17 +47,6 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         }
     }
 
-    /**
-     * @fixtures sqlite read-only bds.yml
-     * @fixtures mysql read-only bds.yml
-     *
-     * @testWith ["mysql"]
-     *           ["sqlite"]
-     */
-    public function testBdsWithAnnotations(string $label): void {
-        $this->testBds($label);
-    }
-
     #[Fixtures('mysql', 'read-only', 'bds.yml')]
     #[Fixtures('sqlite', 'read-only', 'bds.yml')]
     #[TestWith(['mysql'])]
@@ -227,10 +216,8 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         );
     }
 
-    /**
-     * @testWith ["mysql"]
-     *           ["sqlite"]
-     */
+    #[TestWith(['mysql'])]
+    #[TestWith(['sqlite'])]
     function testBinaryFixturesSqlite(string $connectionName) {
         $pdo = $this->getConnection($connectionName);
 
