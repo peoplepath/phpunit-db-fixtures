@@ -1,0 +1,9 @@
+defaults:
+  user: &userAlias
+    id: 1
+    username: userFromDefaults
+
+demo:
+  -
+    <<: *userAlias
+    created: '2010-10-10 10:10:10'

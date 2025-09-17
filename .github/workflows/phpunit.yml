@@ -6,12 +6,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-versions: ['7.4']
+        php-versions: ['8.3']
     steps:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Start database services
-        run: docker-compose up -d
+        run: docker compose up -d
       - name: Setup PHP, with composer and extensions
         uses: shivammathur/setup-php@v2 #https://github.com/shivammathur/setup-php
         with:
@@ -22,7 +22,7 @@ jobs:
         id: composer-cache
         run: echo "::set-output name=dir::$(composer config cache-files-dir)"
       - name: Cache composer dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
@@ -31,7 +31,7 @@ jobs:
         run: composer install --no-progress --prefer-dist --optimize-autoloader
       - name: Run Testsuite
         run: |
-          while ! docker-compose exec -T mysql mysqladmin --user=root --host mysql ping --silent ; do
+          while ! docker compose exec -T mysql mysqladmin --user=root --host mysql ping --silent ; do
               echo "Waiting for database connection..."
               sleep 2
           done
