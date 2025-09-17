@@ -227,7 +227,9 @@ trait DbFixturesTrait
         $this->cleanTables($connection, $sqls);
 
         foreach ($data as $table => $rows) {
-            $this->buildSql($connection, $table, $rows, $sqls);
+            if ($table !== 'defaults') { // skip "defaults", it is used for alias nodes
+                $this->buildSql($connection, $table, $rows, $sqls);
+            }
         }
 
         $this->executeSqls($connection, $sqls);

@@ -145,6 +145,23 @@ final class UsageOfDbFixturesTraitTest extends \PHPUnit\Framework\TestCase
         $this->assertSame($expected, $demo);
     }
 
+    #[Fixtures('mysql', 'read-only', 'fixtures_alias.yaml')]
+    public function testDefaultAliasNodes(): void {
+        $connection = $this->getConnection('mysql');
+
+        $stmt = $connection->query('SELECT username FROM demo');
+        $demo = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $this->assertSame(
+            [
+                [
+                    'username' => 'userFromDefaults',
+                ],
+            ],
+            $demo,
+        );
+    }
+
     #[Fixtures('mongo', 'read-only', 'fixtures.json')]
     public function testLoadingFixturesMongo(): void {
         $database        = $this->getConnection('mongo');
