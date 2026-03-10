@@ -462,12 +462,7 @@ trait DbFixturesTrait
             foreach ($columns as $column) {
                 if (array_key_exists($column, $row) && $row[$column] !== null) {
                     $val = $row[$column];
-                    // pack binary string
-                    if (is_string($val) && preg_match('/[^\x20-\x7E\t\r\n]/', $val)) {
-                        $vals[] = $this->quoteBinary($pdo, $val);
-                    } else {
-                        $vals[] = $pdo->quote($val);
-                    }
+                    $vals[] = $pdo->quote($val);
                 } else {
                     $vals[] = 'NULL';
                 }
@@ -486,17 +481,6 @@ trait DbFixturesTrait
             implode(',', $columns),
             implode(',', $values)
         );
-    }
-
-    private function quoteBinary(\PDO $pdo, string $value): string {
-        switch ($driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
-            case 'mysql':
-                return sprintf("UNHEX('%s')", bin2hex($value));
-            case 'sqlite':
-                return sprintf("X'%s'", bin2hex($value));
-        }
-
-        throw new \InvalidArgumentException('Unsupported PDO driver: ' . $driver);
     }
 
     /**************** Adapters specific stuff  *******************/
