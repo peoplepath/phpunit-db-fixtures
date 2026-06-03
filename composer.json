@@ -11,7 +11,7 @@
     ],
     "require": {
         "php": ">=8.3",
-        "phpunit/phpunit": "^12.0"
+        "phpunit/phpunit": "^12.0||^13.0"
     },
     "suggest": {
         "opensearch-project/opensearch-php" : "Needed for OpenSearch support",
@@ -26,7 +26,7 @@
     },
     "require-dev": {
         "robmorgan/phinx": "^0.12",
-        "mongodb/mongodb": "^2.1.0",
+        "mongodb/mongodb": "^1.5||^2.0",
         "symfony/yaml": "^7",
         "rector/rector": "^1.2"
     }
